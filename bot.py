@@ -1,87 +1,64 @@
 import discord
 from discord.ext import commands
-import random
+from config import token  # Botun tokenini config dosyasından içe aktarma
 
+intents = discord.Intents.default()
+intents.members = True  # Botun kullanıcılarla çalışmasına ve onları banlamasına izin verir
+intents.message_content = True
 
-class UtilityCommands(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+bot = commands.Bot(command_prefix='!', intents=intents)
 
-    @commands.command()
-    async def add(self, ctx, left: int, right: int):
-        """Adds two numbers together."""
-        await ctx.send(left + right)
+@bot.event
+async def on_ready():
+    print(f'Giriş yapıldı:  {bot.user.name}')
 
-    @commands.command()
-    async def roll(self, ctx, dice: str):
-        """Rolls a dice in NdN format."""
-        try:
-            rolls, limit = map(int, dice.split('d'))
-        except Exception:
-            await ctx.send('Format has to be in NdN!')
-            return
+@bot.event
+async def on_message(message):
+    # Botların kendi mesajlarını kontrol etme
+    if message.author.bot:
+        return
 
-        result = ', '.join(
-            str(random.randint(1, limit))
-            for r in range(rolls)
-        )
+    # Mesajda https:// varsa
+    if "https://" in message.content:
+        # Botun banlama yetkisi var mı?
+        if message.guild.me.guild_permissions.ban_members:
+            try:
+                await message.guild.ban(
+                    message.author,
+                    reason="Mesajda bağlantı bulundu"
+                )
+                await message.channel.send(
+                    f"{message.author.name} bağlantı gönderdiği için banlandı."
+                )
+            except discord.Forbidden:
+                await message.channel.send(
+                    "Kullanıcıyı banlayamadım. Botun yetkilerini kontrol edin."
+                )
 
-        await ctx.send(result)
+    # Diğer ! komutlarının çalışmaya devam etmesi için
+    await bot.process_commands(message)
 
-    @commands.command(
-        description='For when you wanna settle the score some other way'
-    )
-    async def choose(self, ctx, *choices: str):
-        """Chooses between multiple choices."""
+@bot.command()
+async def start(ctx):
+    await ctx.send("Merhaba! Ben bir sohbet yöneticisi botuyum!")
 
-        if not choices:
-            await ctx.send('En az iki seçenek vermelisin!')
-            return
-
-        await ctx.send(random.choice(choices))
-
-    @commands.command()
-    async def repeat(self, ctx, times: int, content='repeating...'):
-        """Repeats a message multiple times."""
-
-        if times < 1:
-            await ctx.send('Tekrar sayısı 1 veya daha büyük olmalı!')
-            return
-
-        if times > 10:
-            await ctx.send('En fazla 10 kere tekrar edebilirsin!')
-            return
-
-        for i in range(times):
-            await ctx.send(content)
-
-    @commands.command()
-    async def joined(self, ctx, member: discord.Member):
-        """Says when a member joined."""
-
-        if member.joined_at is None:
-            await ctx.send(f'{member} has no join date.')
+@bot.command()
+@commands.has_permissions(ban_members=True)
+async def ban(ctx, member: discord.Member = None):
+    if member:
+        if ctx.author.top_role <= member.top_role:
+            await ctx.send("Eşit veya daha yüksek rütbeli bir kullanıcıyı banlamak mümkün değildir!")
         else:
-            await ctx.send(
-                f'{member} joined '
-                f'{discord.utils.format_dt(member.joined_at)}'
-            )
+            await ctx.guild.ban(member)
+            await ctx.send(f"Kullanızı {member.name} banlandı")
+    else:
+        await ctx.send("Bu komut banlamak istediğiniz kullanıcıyı işaret etmelidir. Örneğin: `!ban @user`")
 
-    @commands.group()
-    async def cool(self, ctx):
-        """Says if a user is cool."""
+@ban.error
+async def ban_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("Bu komutu çalıştırmak için yeterli izniniz yok.")
+    elif isinstance(error, commands.MemberNotFound):
+        await ctx.send("Kullanıcı bulunamadı!")
 
-        if ctx.invoked_subcommand is None:
-            await ctx.send(
-                f'No, {ctx.subcommand_passed} is not cool'
-            )
-
-    @cool.command(name='bot')
-    async def _bot(self, ctx):
-        """Is the bot cool?"""
-
-        await ctx.send('Yes, the bot is cool.')
-
-
-async def setup(bot):
-    await bot.add_cog(UtilityCommands(bot))
+bot.run(token)
