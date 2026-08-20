@@ -44,9 +44,25 @@ async def on_member_join(member):
     for channel in member.guild.text_channels:
         await channel.send(f"Hoşgeldin umarım iyisindir., {member.mention}!")
 
+@bot.event
+async def on_member_remove(member):
+    for channel in member.guild.text_channels:
+        await channel.send(f"{member.name} sunucudan ayrıldı.")
+
 @bot.command()
 async def start(ctx):
     await ctx.send("Merhaba! Ben bir sohbet yöneticisi botuyum!")
+
+@bot.command()
+async def bilgi(ctx):
+    await ctx.send(
+        "🤖 Bot Komutları:\n"
+        "!start - Botu başlatır.\n"
+        "!bilgi - Botun özelliklerini gösterir.\n"
+        "!ban @kullanıcı - Kullanıcıyı banlar.\n"
+        "Yeni üyeler otomatik olarak karşılanır.\n"
+        "https:// bağlantısı gönderen kullanıcılar otomatik olarak kontrol edilir."
+    )
 
 @bot.command()
 @commands.has_permissions(ban_members=True)
