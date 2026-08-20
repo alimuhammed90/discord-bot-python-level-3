@@ -38,6 +38,12 @@ async def on_message(message):
     # Diğer ! komutlarının çalışmaya devam etmesi için
     await bot.process_commands(message)
 
+
+@bot.event
+async def on_member_join(member):
+    for channel in member.guild.text_channels:
+        await channel.send(f"Hoşgeldin umarım iyisindir., {member.mention}!")
+
 @bot.command()
 async def start(ctx):
     await ctx.send("Merhaba! Ben bir sohbet yöneticisi botuyum!")
